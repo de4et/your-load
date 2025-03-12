@@ -48,7 +48,7 @@ func saveToFile(img image.Image, pts int64) error {
 
 func main() {
 	c := &gohlslib.Client{
-		URI: "https://minos.cloud.obrut.stream/movies/fb39b1dc117a53e7e03124c89d9b87517f55e4e8/b012ee55b49e5b3a65053574734ee2cb:2025031303/720.mp4:hls:manifest.m3u8",
+		URI: "https://live.hdontap.com/hls/hosb5/dollywood-eagles-aviary1-overlook_aef.stream/playlist.m3u8",
 	}
 
 	c.OnRequest = func(req *http.Request) {

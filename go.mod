@@ -12,4 +12,4 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 )
 
-// replace github.com/bluenviron/gohlslib/v2 => github.com/de4et/gohlslib-add
+replace github.com/bluenviron/gohlslib/v2 => github.com/de4et/gohlslib-add/v2 v2.1.4
