@@ -64,6 +64,8 @@ type Reader struct {
 	dem           *astits.Demuxer
 	onDecodeError ReaderOnDecodeErrorFunc
 	onData        map[uint16]func(int64, int64, []byte) error
+
+	lastData map[uint16][]byte
 }
 
 // NewReader allocates a Reader.
@@ -104,6 +106,7 @@ func NewReader(br io.Reader) (*Reader, error) {
 		dem:           dem,
 		onDecodeError: func(error) {},
 		onData:        make(map[uint16]func(int64, int64, []byte) error),
+		lastData:      make(map[uint16][]byte),
 	}, nil
 }
 
@@ -323,6 +326,25 @@ func (r *Reader) Read() error {
 			return nil
 		}
 
-		return onData(pts, dts, data.PES.Data)
+		var tmp []byte
+		f := false
+		if len(r.lastData[data.PID]) != 0 {
+			tmp = r.lastData[data.PID]
+		} else {
+			f = true
+		}
+
+		if data.PES.Header.OptionalHeader.DataAlignmentIndicator {
+			r.lastData[data.PID] = data.PES.Data
+		} else {
+			r.lastData[data.PID] = append(r.lastData[data.PID], data.PES.Data...)
+			return nil
+		}
+
+		if f {
+			return nil
+		}
+
+		return onData(pts, dts, tmp)
 	}
 }
