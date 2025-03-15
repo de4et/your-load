@@ -70,7 +70,6 @@ type Reader struct {
 
 // NewReader allocates a Reader.
 func NewReader(br io.Reader) (*Reader, error) {
-	fmt.Println("IM HERE!!!!")
 	rr := &recordReader{r: br}
 
 	dem := astits.NewDemuxer(
@@ -326,22 +325,21 @@ func (r *Reader) Read() error {
 			return nil
 		}
 
-		var tmp []byte
-		f := false
+		tmp := make([]byte, 0)
+		b := false
 		if len(r.lastData[data.PID]) != 0 {
-			tmp = r.lastData[data.PID]
+			tmp = append(tmp, r.lastData[data.PID]...)
 		} else {
-			f = true
+			b = true
 		}
-
 		if data.PES.Header.OptionalHeader.DataAlignmentIndicator {
-			r.lastData[data.PID] = data.PES.Data
+			r.lastData[data.PID] = make([]byte, 0, len(data.PES.Data))
+			r.lastData[data.PID] = append(r.lastData[data.PID], data.PES.Data...)
 		} else {
 			r.lastData[data.PID] = append(r.lastData[data.PID], data.PES.Data...)
 			return nil
 		}
-
-		if f {
+		if b {
 			return nil
 		}
 

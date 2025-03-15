@@ -1,4 +1,4 @@
-package main
+package downloader
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 	"unsafe"
 )
 
-// #cgo pkg-config: libavcodec libavutil libswscale
-// #cgo LDFLAGS: -L. -llibavcodec -llibavutil -llibswscale
+// #cgo LDFLAGS: -L${SRCDIR}/../../ffmpeg/lib -llibavcodec -llibavutil -llibswscale
+// #cgo CFLAGS: -I${SRCDIR}/../../ffmpeg/include
 // #include <libavcodec/avcodec.h>
 // #include <libavutil/imgutils.h>
 // #include <libswscale/swscale.h>
@@ -71,10 +71,6 @@ func (d *h264Decoder) close() {
 
 	C.av_frame_free(&d.srcFrame)
 	C.avcodec_free_context(&d.codecCtx)
-}
-
-func (d *h264Decoder) reset() {
-	C.avcodec_flush_buffers(d.codecCtx)
 }
 
 func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {

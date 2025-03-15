@@ -3,31 +3,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"image/jpeg"
 	"log"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"strconv"
-	"time"
 
-	"github.com/bluenviron/gohlslib/v2"
-	"github.com/bluenviron/gohlslib/v2/pkg/codecs"
+	"github.com/de4et/your-load/getter/internal/downloader"
 )
 
 const rateInSeconds = 3
-const NALU_TYPE_NONIDR = 1
-
-func findH264Track(tracks []*gohlslib.Track) *gohlslib.Track {
-	for _, track := range tracks {
-		if _, ok := track.Codec.(*codecs.H264); ok {
-			return track
-		}
-	}
-	return nil
-}
 
 func saveToFile(img image.Image, pts int64) error {
 	// create file
@@ -47,82 +35,30 @@ func saveToFile(img image.Image, pts int64) error {
 }
 
 func main() {
-	c := &gohlslib.Client{
-		URI: "https://live.hdontap.com/hls/hosb5/dollywood-eagles-aviary1-overlook_aef.stream/playlist.m3u8",
-	}
+	const url = "https://live.hdontap.com/hls/hosb5/dollywood-eagles-aviary1-overlook_aef.stream/playlist.m3u8"
+	// const url = "https://videos-3.earthcam.com/fecnetwork/3916.flv/chunklist_w294512582.m3u8?t=WHjF/VTcRlQ3Mh4Qco7ulOaxaZCUGiFHttf4YYxGU1TkioPqphoAzOc/ROODzHnP&td=202503142001"
+	// const url = "https://stream.telko.ru/Pir5a_poz6_cam4/tracks-v1/index.fmp4.m3u8"
+	d := downloader.NewHLSStreamDownloader(url, rateInSeconds, 2)
 
-	c.OnRequest = func(req *http.Request) {
-		req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0")
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	d.Start(ctx)
 
-	c.OnTracks = func(tracks []*gohlslib.Track) error {
-		track := findH264Track(tracks)
-		if track == nil {
-			return fmt.Errorf("H264 track not found")
-		}
-
-		frameDec := &h264Decoder{}
-		err := frameDec.initialize()
+	pts := int64(0)
+	log.Println("starting")
+	for {
+		img, err := d.Get()
 		if err != nil {
-			return err
+			fmt.Printf("err: %v", err)
+			break
 		}
 
-		if track.Codec.(*codecs.H264).SPS != nil {
-			frameDec.decode(track.Codec.(*codecs.H264).SPS)
+		log.Printf("saving to file %d.jpg\n", pts)
+		err = saveToFile(img, pts)
+		if err != nil {
+			panic(err)
 		}
-		if track.Codec.(*codecs.H264).PPS != nil {
-			frameDec.decode(track.Codec.(*codecs.H264).PPS)
-		}
-
-		saveCount := 0
-
-		t := time.Now()
-		last := 0.0
-		c.OnDataH26x(track, func(pts int64, dts int64, au [][]byte) {
-
-			secs := float64(pts) / float64(track.ClockRate)
-
-			for _, nalu := range au {
-				img, err := frameDec.decode(nalu)
-				if err != nil {
-					panic(err)
-				}
-
-				if secs < last+float64(rateInSeconds) {
-					continue
-				}
-
-				log.Printf("actual: %.2f and %.2f", time.Since(t).Seconds(), secs)
-				if img == nil {
-					continue
-				}
-
-				err = saveToFile(img, pts)
-				if err != nil {
-					panic(err)
-				}
-
-				last = secs
-				saveCount++
-				if saveCount == 100 {
-					log.Println("Saved all, exiting...")
-					os.Exit(1)
-				}
-			}
-		})
-
-		return nil
+		pts++
 	}
-
-	err := c.Start()
-	if err != nil {
-		panic(err)
-	}
-	defer c.Close()
-
-	err = <-c.Wait()
-	if err != nil {
-		log.Printf("ERROR - %v", err)
-	}
-	// panic(<-c.Wait())
+	fmt.Println("Exiting...")
 }
