@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"image"
-	"image/jpeg"
 	"log"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/bluenviron/gohlslib/v2"
@@ -24,6 +21,7 @@ var (
 )
 
 const defaultRetriesAfterError = 3
+const defaultImageChanSize = 3
 
 type HLSStremaDownloader struct {
 	URI     string
@@ -46,7 +44,7 @@ func NewHLSStreamDownloader(uri string, rate float64, retriesAfterError int) *HL
 	return &HLSStremaDownloader{
 		URI:               uri,
 		Rate:              rate,
-		imageChan:         make(chan image.Image),
+		imageChan:         make(chan image.Image, defaultImageChanSize),
 		errChan:           make(chan error),
 		retriesAfterError: retriesAfterError,
 	}
@@ -55,11 +53,9 @@ func NewHLSStreamDownloader(uri string, rate float64, retriesAfterError int) *HL
 func (sd *HLSStremaDownloader) Get() (image.Image, error) {
 	select {
 	case res := <-sd.imageChan:
-		fmt.Println("imageChan")
 		return res, nil
 
 	case err := <-sd.errChan:
-		fmt.Printf("errChan %v\n", err)
 		return nil, err
 	}
 }
@@ -105,25 +101,15 @@ func (sd *HLSStremaDownloader) Start(ctx context.Context) error {
 				img, err := frameDec.decode(nalu)
 				if err != nil {
 					sd.errChan <- err
-					continue
+					return
 				}
 
-				if secs < last+sd.Rate {
-					continue
-				}
-
-				if img == nil {
+				if secs < last+sd.Rate || img == nil {
 					continue
 				}
 
 				log.Printf("actual: %.2f and %.2f", time.Since(t).Seconds(), secs)
-
-				err = saveToFile(img, pts)
-				if err != nil {
-					log.Fatal(err)
-				}
 				sd.imageChan <- img
-
 				last = secs
 			}
 		})
@@ -138,13 +124,12 @@ func (sd *HLSStremaDownloader) Start(ctx context.Context) error {
 
 	// retry retriesAfterError times after any error encountered
 	// mainly for "next segment not found" error
-	ech := make(chan error)
 	go func() {
 		err = <-sd.client.Wait()
 		if err != nil {
 			log.Printf("encountered error: %v", err)
 			if sd.retries >= sd.retriesAfterError {
-				ech <- err
+				return
 			}
 
 			sd.retries++
@@ -167,21 +152,4 @@ func findH264Track(tracks []*gohlslib.Track) *gohlslib.Track {
 		}
 	}
 	return nil
-}
-
-func saveToFile(img image.Image, pts int64) error {
-	// create file
-	fname := "imgs/" + strconv.FormatInt(pts, 10) + ".jpg"
-	f, err := os.Create(fname)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	log.Println("saving", fname)
-
-	// convert to jpeg
-	return jpeg.Encode(f, img, &jpeg.Options{
-		Quality: 100,
-	})
 }
