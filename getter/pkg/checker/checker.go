@@ -25,8 +25,8 @@ func (p ProtocolType) String() string {
 	}
 }
 
-var ErrMethodNotAllowed = fmt.Errorf("Method not allowed")
-var ErrBadStatusCode = fmt.Errorf("Status code is not 200")
+var ErrProtocolNotAllowed = fmt.Errorf("protocol not allowed")
+var ErrBadStatusCode = fmt.Errorf("status code is not 200")
 
 const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0)"
 
@@ -49,7 +49,7 @@ func (c *Checker) CheckURL(uri string) (CheckerResponse, error) {
 		}, nil
 	}
 
-	return CheckerResponse{}, ErrMethodNotAllowed
+	return CheckerResponse{}, ErrProtocolNotAllowed
 }
 
 func (c *Checker) checkHLS(uri string) (bool, error) {
@@ -86,5 +86,5 @@ func getFilenameFromURL(uri string) string {
 	fileNameWithExt := path.Base(uri)
 	fileNameWithExt = strings.Split(fileNameWithExt, "?")[0]
 	fileNameWithExt = strings.Split(fileNameWithExt, "#")[0]
-	return uri
+	return fileNameWithExt
 }
