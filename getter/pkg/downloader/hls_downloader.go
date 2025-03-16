@@ -108,7 +108,7 @@ func (sd *HLSStremaDownloader) Start(ctx context.Context) error {
 					continue
 				}
 
-				log.Printf("actual: %.2f and %.2f", time.Since(t).Seconds(), secs)
+				log.Printf("actual and pts_to_secs: %.2f and %.2f", time.Since(t).Seconds(), secs)
 				sd.imageChan <- img
 				last = secs
 			}
