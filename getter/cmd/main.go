@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -67,6 +68,7 @@ func main() {
 	for i, v := range checkedURLs {
 		downloaders[i] = downloader.NewHLSStreamDownloader(v, rateInSeconds, 2)
 		downloaders[i].Start(ctx)
+		defer downloaders[i].Close()
 	}
 
 	q := queue.NewSliceImageQueue()
@@ -76,12 +78,17 @@ func main() {
 	for i, v := range downloaders {
 		wg.Add(1)
 		go func(down downloader.StreamDownloader, prefInt int) {
+			defer wg.Done()
 			pts := int64(0)
 			camID := fmt.Sprintf("cam#%d", prefInt)
 			ctx := context.TODO()
 			for {
 				resp, err := down.Get()
 				if err != nil {
+					if errors.Is(err, downloader.ErrClosed) {
+						return
+					}
+
 					fmt.Printf("err: %v", err)
 					break
 				}
@@ -98,11 +105,8 @@ func main() {
 					ImageURI:  uri,
 					CamID:     camID,
 				})
-
 				pts++
 			}
-			wg.Done()
-
 		}(v, i)
 	}
 
@@ -115,8 +119,8 @@ func main() {
 		go recieveImage(ctx, "#"+strconv.FormatInt(int64(i), 10), &rwg, q, s)
 	}
 
-	wg.Wait()
 	rwg.Wait()
+	log.Printf("Exiting...")
 }
 
 func recieveImage(ctx context.Context, name string, wg *sync.WaitGroup, q queue.ImageQueueGetter, s img.StoreGetter) {
@@ -125,7 +129,7 @@ func recieveImage(ctx context.Context, name string, wg *sync.WaitGroup, q queue.
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("CTX is closed")
+			log.Printf("CTX RECIEVER is closed")
 			return
 		default:
 		}
@@ -133,7 +137,6 @@ func recieveImage(ctx context.Context, name string, wg *sync.WaitGroup, q queue.
 		el, err := q.Get(ctx)
 		if err != nil {
 			if err == queue.ErrQueueIsEmpty {
-				// log.Printf("Queue is empty, waiting..")
 				time.Sleep(retryDelay)
 				continue
 			}

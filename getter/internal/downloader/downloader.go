@@ -14,4 +14,5 @@ type downloaderResponse struct {
 type StreamDownloader interface {
 	Start(context.Context) error
 	Get() (downloaderResponse, error)
+	Close()
 }
