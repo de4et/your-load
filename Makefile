@@ -4,3 +4,10 @@ build:
 
 run: build
 	@./bin/$(program)/$(program).exe
+
+test-cover:
+	@go test -coverprofile=c.out ./... -v
+	@go tool cover -html=c.out
+
+test:
+	@go test ./... -v
