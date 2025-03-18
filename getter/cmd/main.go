@@ -10,31 +10,18 @@ import (
 	"log"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 
-	"github.com/de4et/your-load/getter/pkg/checker"
-	"github.com/de4et/your-load/getter/pkg/downloader"
+	"github.com/de4et/your-load/getter/internal/checker"
+	"github.com/de4et/your-load/getter/internal/downloader"
+	img "github.com/de4et/your-load/getter/internal/image"
+	"github.com/de4et/your-load/getter/internal/queue"
 )
 
 const rateInSeconds = 3
-
-func saveToFile(img image.Image, pref int, pts int64) error {
-	// create file
-	fname := "imgs/" + strconv.FormatInt(int64(pref), 10) + "_" + strconv.FormatInt(pts, 10) + ".jpg"
-	f, err := os.Create(fname)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	log.Println("saving", fname)
-
-	// convert to jpeg
-	return jpeg.Encode(f, img, &jpeg.Options{
-		Quality: 100,
-	})
-}
 
 func main() {
 	urlsToDownload := []string{
@@ -55,6 +42,8 @@ func main() {
 
 		"https://www.google.com/pal.m3u8",
 		"https://www.google.com/pal.m3u8",
+
+		"zxcvzxv",
 	}
 
 	checkedURLs := make([]string, 0, len(urlsToDownload))
@@ -80,30 +69,106 @@ func main() {
 		downloaders[i].Start(ctx)
 	}
 
-	wg := sync.WaitGroup{}
+	q := queue.NewSliceImageQueue()
+	s := img.NewMapStore()
 
+	wg := sync.WaitGroup{}
 	for i, v := range downloaders {
 		wg.Add(1)
 		go func(down downloader.StreamDownloader, prefInt int) {
 			pts := int64(0)
+			camID := fmt.Sprintf("cam#%d", prefInt)
+			ctx := context.TODO()
 			for {
-				img, err := down.Get()
+				resp, err := down.Get()
 				if err != nil {
 					fmt.Printf("err: %v", err)
 					break
 				}
 
-				log.Printf("saving to file %d_%d.jpg\n", prefInt, pts)
-				err = saveToFile(img, prefInt, pts)
+				name := fmt.Sprintf("%s_%d", camID, resp.Timestamp.UnixNano())
+				uri, err := s.Add(ctx, resp.Image, name)
 				if err != nil {
 					panic(err)
 				}
+				log.Printf("saved to %s", uri)
+
+				q.Add(ctx, queue.ImageQueueElement{
+					Timestamp: resp.Timestamp,
+					ImageURI:  uri,
+					CamID:     camID,
+				})
+
 				pts++
 			}
 			wg.Done()
 
 		}(v, i)
 	}
+
+	const numReceivers = 3
+	rwg := sync.WaitGroup{}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(30)*time.Second)
+	defer cancel()
+	for i := 0; i < numReceivers; i++ {
+		rwg.Add(1)
+		go recieveImage(ctx, "#"+strconv.FormatInt(int64(i), 10), &rwg, q, s)
+	}
+
 	wg.Wait()
-	fmt.Println("Exiting...")
+	rwg.Wait()
+}
+
+func recieveImage(ctx context.Context, name string, wg *sync.WaitGroup, q queue.ImageQueueGetter, s img.StoreGetter) {
+	const retryDelay = time.Duration(100) * time.Millisecond
+	defer wg.Done()
+	for {
+		select {
+		case <-ctx.Done():
+			log.Printf("CTX is closed")
+			return
+		default:
+		}
+
+		el, err := q.Get(ctx)
+		if err != nil {
+			if err == queue.ErrQueueIsEmpty {
+				// log.Printf("Queue is empty, waiting..")
+				time.Sleep(retryDelay)
+				continue
+			}
+		}
+
+		img, err := s.Get(ctx, el.ImageURI)
+		if err != nil {
+			panic(err)
+		}
+
+		absName, err := saveToFile(img, el.ImageURI)
+		if err != nil {
+			panic(err)
+		}
+
+		log.Printf("%s ID-%s TS-%v AbsName-%s", name, el.CamID, el.Timestamp, absName)
+	}
+}
+
+func saveToFile(img image.Image, name string) (string, error) {
+	fname := "imgs/" + name + ".jpg"
+	f, err := os.Create(fname)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	log.Println("saving", fname)
+
+	absPath, err := filepath.Abs(fname)
+	if err != nil {
+		return "", err
+	}
+
+	return absPath, jpeg.Encode(f, img, &jpeg.Options{
+		Quality: 100,
+	})
 }

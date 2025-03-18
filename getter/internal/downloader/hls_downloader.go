@@ -3,7 +3,6 @@ package downloader
 import (
 	"context"
 	"fmt"
-	"image"
 	"log"
 	"net/http"
 	"time"
@@ -21,17 +20,17 @@ var (
 )
 
 const defaultRetriesAfterError = 3
-const defaultImageChanSize = 3
+const defaultImageChanSize = 10
 
 type HLSStremaDownloader struct {
 	URI     string
 	Rate    float64
 	Headers map[string]string
 
-	client    *gohlslib.Client
-	ctx       context.Context
-	imageChan chan image.Image
-	errChan   chan error
+	client   *gohlslib.Client
+	ctx      context.Context
+	respChan chan downloaderResponse
+	errChan  chan error
 
 	retriesAfterError int
 	retries           int
@@ -44,19 +43,19 @@ func NewHLSStreamDownloader(uri string, rate float64, retriesAfterError int) *HL
 	return &HLSStremaDownloader{
 		URI:               uri,
 		Rate:              rate,
-		imageChan:         make(chan image.Image, defaultImageChanSize),
+		respChan:          make(chan downloaderResponse, defaultImageChanSize),
 		errChan:           make(chan error),
 		retriesAfterError: retriesAfterError,
 	}
 }
 
-func (sd *HLSStremaDownloader) Get() (image.Image, error) {
+func (sd *HLSStremaDownloader) Get() (downloaderResponse, error) {
 	select {
-	case res := <-sd.imageChan:
+	case res := <-sd.respChan:
 		return res, nil
 
 	case err := <-sd.errChan:
-		return nil, err
+		return downloaderResponse{}, err
 	}
 }
 
@@ -72,6 +71,11 @@ func (sd *HLSStremaDownloader) Start(ctx context.Context) error {
 			req.Header.Add(k, v)
 		}
 	}
+
+	sd.client.OnDownloadPart = func(url string) {}
+	sd.client.OnDownloadPrimaryPlaylist = func(url string) {}
+	sd.client.OnDownloadSegment = func(url string) {}
+	sd.client.OnDownloadStreamPlaylist = func(url string) {}
 
 	sd.client.OnTracks = func(tracks []*gohlslib.Track) error {
 		track := findH264Track(tracks)
@@ -109,7 +113,10 @@ func (sd *HLSStremaDownloader) Start(ctx context.Context) error {
 				}
 
 				log.Printf("actual and pts_to_secs: %.2f and %.2f", time.Since(t).Seconds(), secs)
-				sd.imageChan <- img
+				sd.respChan <- downloaderResponse{
+					Image:     img,
+					Timestamp: time.Now(),
+				}
 				last = secs
 			}
 		})

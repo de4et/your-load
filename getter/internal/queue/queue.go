@@ -2,16 +2,19 @@ package queue
 
 import (
 	"context"
-	"image"
 	"time"
 )
 
 type ImageQueueElement struct {
 	CamID     string
 	Timestamp time.Time
-	Image     image.Image
+	ImageURI  string
 }
 
 type ImageQueueAdder interface {
-	Add(ctx context.Context, q ImageQueueElement) error
+	Add(ctx context.Context, elem ImageQueueElement) error
+}
+
+type ImageQueueGetter interface {
+	Get(ctx context.Context) (*ImageQueueElement, error)
 }
