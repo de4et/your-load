@@ -155,6 +155,8 @@ func (sd *HLSStremaDownloader) Start(ctx context.Context) error {
 	go func() {
 		err = <-sd.client.Wait()
 		if err != nil && err.Error() != "terminated" { // non-named error
+			log.Printf("Error occured: %v", err)
+			time.Sleep(time.Duration(100) * time.Second)
 			if sd.retries >= sd.retriesAfterError {
 				return
 			}

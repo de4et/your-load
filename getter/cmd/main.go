@@ -18,7 +18,7 @@ import (
 
 	"github.com/de4et/your-load/getter/internal/checker"
 	"github.com/de4et/your-load/getter/internal/downloader"
-	img "github.com/de4et/your-load/getter/internal/image"
+	store "github.com/de4et/your-load/getter/internal/image"
 	"github.com/de4et/your-load/getter/internal/queue"
 )
 
@@ -72,7 +72,7 @@ func main() {
 	}
 
 	q := queue.NewSliceImageQueue()
-	s := img.NewMapStore()
+	s := store.NewMapStore()
 
 	wg := sync.WaitGroup{}
 	for i, v := range downloaders {
@@ -123,7 +123,7 @@ func main() {
 	log.Printf("Exiting...")
 }
 
-func recieveImage(ctx context.Context, name string, wg *sync.WaitGroup, q queue.ImageQueueGetter, s img.StoreGetter) {
+func recieveImage(ctx context.Context, name string, wg *sync.WaitGroup, q queue.ImageQueueGetter, s store.ImageStoreGetter) {
 	const retryDelay = time.Duration(100) * time.Millisecond
 	defer wg.Done()
 	for {

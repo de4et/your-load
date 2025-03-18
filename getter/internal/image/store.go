@@ -1,24 +1,24 @@
-package image
+package store
 
 import (
 	"context"
 	"image"
 )
 
-type StoreAdder interface {
+type ImageStoreAdder interface {
 	Add(ctx context.Context, img image.Image, name string) (string, error)
 }
 
-type StoreGetter interface {
+type ImageStoreGetter interface {
 	Get(ctx context.Context, uri string) (image.Image, error)
 }
 
-type StoreDeleter interface {
+type ImageStoreDeleter interface {
 	Delete(ctx context.Context, uri string) error
 }
 
-type Store interface {
-	StoreAdder
-	StoreGetter
-	StoreDeleter
+type ImageStore interface {
+	ImageStoreAdder
+	ImageStoreGetter
+	ImageStoreDeleter
 }

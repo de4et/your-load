@@ -1,4 +1,4 @@
-package image
+package store
 
 import (
 	"context"
@@ -10,8 +10,6 @@ import (
 var ErrAlreadyExists = fmt.Errorf("uri is already used")
 
 type MapStore struct {
-	nextInt int
-
 	m  map[string]image.Image
 	mu sync.Mutex
 }
