@@ -12,6 +12,6 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 )
 
-replace github.com/bluenviron/mediacommon/v2 => ./getter/vend/mediacommon/v2@v2.0.0
+replace github.com/bluenviron/mediacommon/v2 => ./vend/mediacommon/v2@v2.0.0
 
-replace github.com/bluenviron/mediacommon => ./getter/vend/mediacommon@v1.14.0
+replace github.com/bluenviron/mediacommon => ./vend/mediacommon@v1.14.0
