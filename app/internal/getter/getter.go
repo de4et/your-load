@@ -10,16 +10,16 @@ import (
 	"github.com/de4et/your-load/app/internal/getter/checker"
 	"github.com/de4et/your-load/app/internal/getter/downloader"
 	store "github.com/de4et/your-load/app/internal/getter/imagestore"
-	"github.com/de4et/your-load/app/internal/pkg/queue"
+	"github.com/de4et/your-load/app/internal/getter/queue"
 )
 
 type Getter struct {
-	jobs       []*Job
 	checker    *checker.Checker
 	imageStore store.ImageStoreAdder
 	imageQueue queue.ImageQueueAdder
 
-	mu sync.Mutex
+	jobs []*Job
+	mu   sync.Mutex
 }
 
 func NewGetter(imageStore store.ImageStoreAdder, imageQueue queue.ImageQueueAdder) *Getter {
@@ -35,12 +35,12 @@ func (g *Getter) Check(url string) (checker.CheckerResponse, error) {
 	return g.checker.CheckURL(url)
 }
 
-func (g *Getter) AddJob(job *Job) {
+func (g *Getter) AddJob(ctx context.Context, job *Job) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	g.jobs = append(g.jobs, job)
-	job.Start()
+	job.Start(ctx)
 	go g.runListener(job)
 }
 

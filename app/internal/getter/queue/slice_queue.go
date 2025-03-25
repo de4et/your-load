@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sync"
-)
 
-var ErrQueueIsEmpty = fmt.Errorf("queue is empty")
+	"github.com/de4et/your-load/app/internal/pkg/queue"
+)
 
 type SliceImageQueue struct {
 	arr []ImageQueueElement
@@ -41,7 +41,7 @@ func (sq *SliceImageQueue) Get(ctx context.Context) (*ImageQueueElement, error) 
 		return nil, fmt.Errorf("ctx is closed")
 	default:
 		if len(sq.arr) == 0 {
-			return nil, ErrQueueIsEmpty
+			return nil, queue.ErrQueueIsEmpty
 		}
 
 		el := &sq.arr[0]

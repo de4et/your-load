@@ -1,7 +1,7 @@
 package queue
 
 import (
-	"context"
+	"fmt"
 	"time"
 )
 
@@ -11,10 +11,4 @@ type ImageQueueElement struct {
 	ImageURI  string
 }
 
-type ImageQueueAdder interface {
-	Add(ctx context.Context, elem ImageQueueElement) error
-}
-
-type ImageQueueGetter interface {
-	Get(ctx context.Context) (*ImageQueueElement, error)
-}
+var ErrQueueIsEmpty = fmt.Errorf("queue is empty")
