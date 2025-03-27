@@ -130,8 +130,10 @@ func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
 	}
 
 	// embed frame into an image.Image
+	dstFrameCopy := make([]uint8, len(d.dstFramePtr))
+	copy(dstFrameCopy, d.dstFramePtr)
 	return &image.RGBA{
-		Pix:    d.dstFramePtr,
+		Pix:    dstFrameCopy,
 		Stride: 4 * (int)(d.dstFrame.width),
 		Rect: image.Rectangle{
 			Max: image.Point{(int)(d.dstFrame.width), (int)(d.dstFrame.height)},

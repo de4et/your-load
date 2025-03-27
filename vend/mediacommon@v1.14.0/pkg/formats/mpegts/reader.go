@@ -333,8 +333,8 @@ func (r *Reader) Read() error {
 			b = true
 		}
 		if data.PES.Header.OptionalHeader.DataAlignmentIndicator {
-			r.lastData[data.PID] = make([]byte, 0, len(data.PES.Data))
-			r.lastData[data.PID] = append(r.lastData[data.PID], data.PES.Data...)
+			r.lastData[data.PID] = make([]byte, len(data.PES.Data))
+			copy(r.lastData[data.PID], data.PES.Data)
 		} else {
 			r.lastData[data.PID] = append(r.lastData[data.PID], data.PES.Data...)
 			return nil

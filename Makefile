@@ -1,9 +1,12 @@
 ROOT_DIR := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 build:
-	@export PKG_CONFIG_PATH=$(ROOT_DIR)/app/internal/getter/ffmpeg/lib/pkgconfig && go build -o ./bin/$(program)/$(program).exe ./app/cmd/$(program)
+	@go build -o ./bin/$(program)/$(program).exe ./app/cmd/$(program)
 
 run: build
 	@./bin/$(program)/$(program).exe
+
+run-trace: build
+	@GOTRACEBACK=all ./bin/$(program)/$(program).exe
 
 test-cover:
 	@go test -coverprofile=c.out ./... -v
