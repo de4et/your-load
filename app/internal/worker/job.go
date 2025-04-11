@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"log"
+	"time"
 
 	queuetypes "github.com/de4et/your-load/app/internal/pkg/queue"
 	store "github.com/de4et/your-load/app/internal/worker/imagestore"
@@ -10,20 +11,32 @@ import (
 	"github.com/de4et/your-load/app/internal/worker/queue"
 )
 
+type ProcResult struct {
+	CamID        string
+	PeopleAmount int
+	Timestamp    time.Time
+}
+
+type Repository interface {
+	WriteResult(context.Context, ProcResult) error
+}
+
 type Job struct {
 	imageStore     store.ImageStoreGetter
 	imageQueue     queue.ImageQueueGetter
 	imageProcessor processor.ImageProcessor
+	repository     Repository
 
 	ctx       context.Context
 	ctxCancel func()
 }
 
-func NewJob(imageStore store.ImageStoreGetter, imageQueue queue.ImageQueueGetter, imageProcessor processor.ImageProcessor) *Job {
+func NewJob(imageStore store.ImageStoreGetter, imageQueue queue.ImageQueueGetter, imageProcessor processor.ImageProcessor, repository Repository) *Job {
 	return &Job{
 		imageStore:     imageStore,
 		imageProcessor: imageProcessor,
 		imageQueue:     imageQueue,
+		repository:     repository,
 	}
 }
 
@@ -44,7 +57,6 @@ func (j *Job) runInner() {
 	for {
 		select {
 		case <-j.ctx.Done():
-			log.Printf("CTX RECIEVER is closed")
 			return
 		default:
 		}
@@ -63,6 +75,17 @@ func (j *Job) runInner() {
 		}
 
 		peopleAmount, err := j.imageProcessor.Process(img)
+		if err != nil {
+			panic(err)
+		}
+
+		res := ProcResult{
+			CamID:        el.CamID,
+			PeopleAmount: peopleAmount,
+			Timestamp:    el.Timestamp,
+		}
+
+		err = j.repository.WriteResult(j.ctx, res)
 		if err != nil {
 			panic(err)
 		}

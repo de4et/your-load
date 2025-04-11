@@ -25,6 +25,14 @@ const (
 	recieverPeriodInSeconds = 30
 )
 
+type StubRepository struct {
+}
+
+func (r *StubRepository) WriteResult(ctx context.Context, pr worker.ProcResult) error {
+	log.Printf("Writing result %+v", pr)
+	return nil
+}
+
 func main() {
 	urlsToDownload := []string{
 		"https://live.hdontap.com/hls/hosb5/dollywood-eagles-aviary1-overlook_aef.stream/playlist.m3u8",
@@ -56,9 +64,12 @@ func main() {
 
 	s := store.NewFileImageStore()
 	q := queue.NewSliceImageQueue()
-	p := processor.NewStubProcessor()
 
+	p := processor.NewStubProcessor()
 	g := getter.NewGetter(s, q)
+
+	// w := workerservice.NewWorkerService(s, q, p, r)
+	r := &StubRepository{}
 	w := worker.NewWorker(s, q, p)
 
 	tasks := make([]getter.Task, 0)
@@ -95,7 +106,7 @@ func main() {
 	ctxW, cancel := context.WithTimeout(context.Background(), time.Duration(recieverPeriodInSeconds)*time.Second)
 	defer cancel()
 	for i := 0; i < numReceivers; i++ {
-		j := worker.NewJob(s, q, p)
+		j := worker.NewJob(s, q, p, r)
 		w.AddJob(ctxW, j)
 	}
 	defer w.CloseAll()

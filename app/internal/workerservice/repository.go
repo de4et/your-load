@@ -1,0 +1,3 @@
+package workerservice
+
+func test() {}

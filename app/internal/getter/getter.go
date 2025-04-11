@@ -50,6 +50,7 @@ func (g *Getter) runListener(job *Job) {
 		resp, err := job.Get()
 		if err != nil {
 			if errors.Is(err, downloader.ErrClosed) {
+				job.Close()
 				return
 			}
 
