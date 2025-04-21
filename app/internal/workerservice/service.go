@@ -27,9 +27,10 @@ func NewWorkerService(
 	resultRepository worker.Repository) *WorkerService {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	return &WorkerService{
-		imageStore:     imageStore,
-		imageProcessor: imageProcessor,
-		imageQueue:     imageQueue,
+		imageStore:       imageStore,
+		imageProcessor:   imageProcessor,
+		imageQueue:       imageQueue,
+		resultRepository: resultRepository,
 		worker: worker.NewWorker(imageStore,
 			imageQueue,
 			imageProcessor),
@@ -45,6 +46,10 @@ func (s *WorkerService) AddJob() {
 		s.imageProcessor,
 		s.resultRepository,
 	))
+}
+
+func (s *WorkerService) CloseAll() {
+	s.worker.CloseAll()
 }
 
 func (s *WorkerService) Insert() {

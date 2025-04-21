@@ -15,8 +15,9 @@ import (
 	"github.com/de4et/your-load/app/internal/getter/downloader"
 	store "github.com/de4et/your-load/app/internal/getter/imagestore"
 	"github.com/de4et/your-load/app/internal/getter/queue"
-	"github.com/de4et/your-load/app/internal/worker"
 	"github.com/de4et/your-load/app/internal/worker/processor"
+	"github.com/de4et/your-load/app/internal/workerservice"
+	stubrep "github.com/de4et/your-load/app/internal/workerservice/stub"
 )
 
 const (
@@ -24,14 +25,6 @@ const (
 	handlerPeriodInSeconds  = 20
 	recieverPeriodInSeconds = 30
 )
-
-type StubRepository struct {
-}
-
-func (r *StubRepository) WriteResult(ctx context.Context, pr worker.ProcResult) error {
-	log.Printf("Writing result %+v", pr)
-	return nil
-}
 
 func main() {
 	urlsToDownload := []string{
@@ -67,10 +60,9 @@ func main() {
 
 	p := processor.NewStubProcessor()
 	g := getter.NewGetter(s, q)
+	r := &stubrep.StubRepository{}
 
-	// w := workerservice.NewWorkerService(s, q, p, r)
-	r := &StubRepository{}
-	w := worker.NewWorker(s, q, p)
+	w := workerservice.NewWorkerService(s, q, p, r)
 
 	tasks := make([]getter.Task, 0)
 	for i, v := range urlsToDownload {
@@ -106,8 +98,7 @@ func main() {
 	ctxW, cancel := context.WithTimeout(context.Background(), time.Duration(recieverPeriodInSeconds)*time.Second)
 	defer cancel()
 	for i := 0; i < numReceivers; i++ {
-		j := worker.NewJob(s, q, p, r)
-		w.AddJob(ctxW, j)
+		w.AddJob()
 	}
 	defer w.CloseAll()
 
