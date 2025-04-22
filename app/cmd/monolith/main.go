@@ -15,9 +15,9 @@ import (
 	"github.com/de4et/your-load/app/internal/getter/downloader"
 	store "github.com/de4et/your-load/app/internal/getter/imagestore"
 	"github.com/de4et/your-load/app/internal/getter/queue"
+	"github.com/de4et/your-load/app/internal/repository/worker/maprep"
 	"github.com/de4et/your-load/app/internal/worker/processor"
 	"github.com/de4et/your-load/app/internal/workerservice"
-	stubrep "github.com/de4et/your-load/app/internal/workerservice/stub"
 )
 
 const (
@@ -60,7 +60,7 @@ func main() {
 
 	p := processor.NewStubProcessor()
 	g := getter.NewGetter(s, q)
-	r := &stubrep.StubRepository{}
+	r := maprep.NewMapRepository()
 
 	w := workerservice.NewWorkerService(s, q, p, r)
 

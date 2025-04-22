@@ -1,3 +1,0 @@
-package workerservice
-
-func test() {}
