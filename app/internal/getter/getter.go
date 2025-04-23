@@ -35,13 +35,17 @@ func (g *Getter) Check(url string) (checker.CheckerResponse, error) {
 	return g.checker.CheckURL(url)
 }
 
-func (g *Getter) AddJob(ctx context.Context, job *Job) {
+func (g *Getter) AddJob(ctx context.Context, job *Job) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	g.jobs = append(g.jobs, job)
-	job.Start(ctx)
+	if err := job.Start(ctx); err != nil {
+		return err
+	}
 	go g.runListener(job)
+
+	return nil
 }
 
 func (g *Getter) runListener(job *Job) {

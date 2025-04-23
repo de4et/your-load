@@ -11,7 +11,7 @@ import (
 
 type repKey struct {
 	CamID     string
-	TimeStamp time.Time
+	Timestamp time.Time
 }
 
 type MapRepository struct {

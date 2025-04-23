@@ -12,12 +12,12 @@ import (
 
 	"github.com/de4et/your-load/app/internal/getter"
 	"github.com/de4et/your-load/app/internal/getter/checker"
-	"github.com/de4et/your-load/app/internal/getter/downloader"
 	store "github.com/de4et/your-load/app/internal/getter/imagestore"
 	"github.com/de4et/your-load/app/internal/getter/queue"
 	"github.com/de4et/your-load/app/internal/repository/worker/maprep"
+	getterservice "github.com/de4et/your-load/app/internal/service/getter"
+	workerservice "github.com/de4et/your-load/app/internal/service/worker"
 	"github.com/de4et/your-load/app/internal/worker/processor"
-	"github.com/de4et/your-load/app/internal/workerservice"
 )
 
 const (
@@ -59,9 +59,9 @@ func main() {
 	q := queue.NewSliceImageQueue()
 
 	p := processor.NewStubProcessor()
-	g := getter.NewGetter(s, q)
 	r := maprep.NewMapRepository()
 
+	g := getterservice.NewGetterService(s, q)
 	w := workerservice.NewWorkerService(s, q, p, r)
 
 	tasks := make([]getter.Task, 0)
@@ -76,8 +76,10 @@ func main() {
 		log.Printf("%+v", resp)
 		if resp.ProtocolType == checker.ProtocolHLS {
 			tasks = append(tasks, getter.Task{
-				CamID: fmt.Sprintf("cam#%d", i),
-				URL:   v,
+				CamID:         fmt.Sprintf("cam#%d", i),
+				URL:           v,
+				RateInSeconds: rateInSeconds,
+				Type:          resp.ProtocolType,
 			})
 		}
 	}
@@ -86,9 +88,7 @@ func main() {
 	defer cancel()
 	for i, task := range tasks {
 		log.Printf("Creating and adding job#%d", i)
-		downloader := downloader.NewHLSStreamDownloader(task.URL, rateInSeconds, 2)
-		job := getter.NewJob(time.Now().Add(time.Second*time.Duration(rand.Int()%15+handlerPeriodInSeconds)), task, downloader)
-		g.AddJob(ctxG, job)
+		g.AddJob(time.Now().Add(time.Second*time.Duration(rand.Int()%15+handlerPeriodInSeconds)), task)
 	}
 	defer g.CloseAll()
 

@@ -57,6 +57,7 @@ func NewHLSStreamDownloader(uri string, rate float64, retriesAfterError int) *HL
 }
 
 func (sd *HLSStremaDownloader) Get() (DownloaderResponse, error) {
+	log.Printf("%v -- %v", sd.URI, sd.ctx)
 	select {
 	case <-sd.ctx.Done():
 		return DownloaderResponse{}, ErrClosed

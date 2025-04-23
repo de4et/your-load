@@ -51,6 +51,3 @@ func (s *WorkerService) AddJob() {
 func (s *WorkerService) CloseAll() {
 	s.worker.CloseAll()
 }
-
-func (s *WorkerService) Insert() {
-}

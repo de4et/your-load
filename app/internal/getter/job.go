@@ -34,9 +34,9 @@ func (j *Job) Closed() bool {
 	return j.ctx.Err() != nil
 }
 
-func (j *Job) Start(ctx context.Context) {
+func (j *Job) Start(ctx context.Context) error {
 	j.ctx, j.ctxCancel = context.WithDeadline(ctx, j.Until)
-	j.downloader.Start(j.ctx)
+	return j.downloader.Start(j.ctx)
 }
 
 func (j *Job) Get() (downloader.DownloaderResponse, error) {
