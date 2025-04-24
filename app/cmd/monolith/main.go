@@ -15,6 +15,7 @@ import (
 	store "github.com/de4et/your-load/app/internal/getter/imagestore"
 	"github.com/de4et/your-load/app/internal/getter/queue"
 	"github.com/de4et/your-load/app/internal/repository/worker/maprep"
+	"github.com/de4et/your-load/app/internal/service/analytics"
 	getterservice "github.com/de4et/your-load/app/internal/service/getter"
 	workerservice "github.com/de4et/your-load/app/internal/service/worker"
 	"github.com/de4et/your-load/app/internal/worker/processor"
@@ -63,7 +64,9 @@ func main() {
 
 	g := getterservice.NewGetterService(s, q)
 	w := workerservice.NewWorkerService(s, q, p, r)
+	a := analytics.NewAnalyticsService(r)
 
+	camsToAnalyze := make([]string, 0)
 	tasks := make([]getter.Task, 0)
 	for i, v := range urlsToDownload {
 		log.Printf("Checking #%d - %s", i, v)
@@ -81,6 +84,7 @@ func main() {
 				RateInSeconds: rateInSeconds,
 				Type:          resp.ProtocolType,
 			})
+			camsToAnalyze = append(camsToAnalyze, tasks[len(tasks)-1].CamID)
 		}
 	}
 
@@ -102,9 +106,31 @@ func main() {
 	}
 	defer w.CloseAll()
 
+	forPrint := make([]string, 0)
+	go func() {
+		const camToWatch = 3
+		const lastSeconds = 15
+		time.Sleep(time.Duration(5) * time.Second)
+		for {
+			results, err := a.GetForLast(camsToAnalyze[camToWatch], time.Second*time.Duration(lastSeconds))
+			if err != nil {
+				log.Printf("error getting results for %+v", camsToAnalyze[camToWatch])
+				return
+			}
+			forPrint = append(forPrint, fmt.Sprintf("%+v ( last %vs ) Results for %v [%d]: %+v", time.Now(), 10, camsToAnalyze[camToWatch], len(results), results))
+
+			time.Sleep(time.Duration(3) * time.Second)
+		}
+	}()
+
 	select {
 	case <-ctxG.Done():
 	case <-ctxW.Done():
+	}
+
+	for _, v := range forPrint {
+		fmt.Println(v)
+		fmt.Println()
 	}
 
 	log.Printf("JOBS AMOUNT %d", g.Jobs())
