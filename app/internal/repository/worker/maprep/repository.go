@@ -81,6 +81,26 @@ func (r *MapRepository) Get(ctx context.Context, camID string, timestamp time.Ti
 	return -1, fmt.Errorf("no such result for %v in %v", camID, timestamp)
 }
 
+func (r *MapRepository) GetPeakForPeriod(ctx context.Context, camID string, start time.Time, end time.Time) (analytics.WorkerResult, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		return analytics.WorkerResult{}, err
+	}
+
+	max := analytics.WorkerResult{}
+	for key, value := range r.m {
+		if key.CamID == camID && key.Timestamp.After(start) && key.Timestamp.Before(end) {
+			if value > max.PeopleAmount {
+				max = analytics.WorkerResult{CamID: key.CamID, PeopleAmount: value, TimeStamp: key.Timestamp}
+			}
+		}
+	}
+
+	return max, nil
+}
+
 func sort(arr []analytics.WorkerResult) {
 	slices.SortFunc(arr, func(a analytics.WorkerResult, b analytics.WorkerResult) int {
 		return a.TimeStamp.Compare(b.TimeStamp)

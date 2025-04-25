@@ -11,9 +11,12 @@ type WorkerResult struct {
 	PeopleAmount int
 }
 
+// Показывать пики и донья
+
 type Repository interface {
 	Get(ctx context.Context, camID string, timestamp time.Time) (int, error)
 	GetByPeriod(ctx context.Context, camID string, start time.Time, end time.Time) ([]WorkerResult, error)
+	GetPeakForPeriod(ctx context.Context, camID string, start time.Time, end time.Time) (WorkerResult, error)
 }
 
 type AnalyticsService struct {
@@ -39,4 +42,13 @@ func (s *AnalyticsService) GetByPeriod(camID string, start time.Time, end time.T
 func (s *AnalyticsService) GetForLast(camID string, duration time.Duration) ([]WorkerResult, error) {
 	now := time.Now()
 	return s.resultRepository.GetByPeriod(s.ctx, camID, now.Add(-duration), now)
+}
+
+func (s *AnalyticsService) GetPeakByPeriod(camID string, start time.Time, end time.Time) (WorkerResult, error) {
+	return s.resultRepository.GetPeakForPeriod(s.ctx, camID, start, end)
+}
+
+func (s *AnalyticsService) GetPeakForLast(camID string, duration time.Duration) (WorkerResult, error) {
+	now := time.Now()
+	return s.resultRepository.GetPeakForPeriod(s.ctx, camID, now.Add(-duration), now)
 }

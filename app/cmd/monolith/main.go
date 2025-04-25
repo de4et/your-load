@@ -117,7 +117,14 @@ func main() {
 				log.Printf("error getting results for %+v", camsToAnalyze[camToWatch])
 				return
 			}
-			forPrint = append(forPrint, fmt.Sprintf("%+v ( last %vs ) Results for %v [%d]: %+v", time.Now(), 10, camsToAnalyze[camToWatch], len(results), results))
+
+			peak, err := a.GetPeakForLast(camsToAnalyze[camToWatch], time.Second*time.Duration(lastSeconds))
+			if err != nil {
+				log.Printf("error getting results for %+v", camsToAnalyze[camToWatch])
+				return
+			}
+
+			forPrint = append(forPrint, fmt.Sprintf("%+v ( last %vs ) Results for %v [%d]: %+v\nPeak: %v", time.Now(), 10, camsToAnalyze[camToWatch], len(results), results, peak))
 
 			time.Sleep(time.Duration(3) * time.Second)
 		}
