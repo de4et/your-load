@@ -25,5 +25,5 @@ go.work.sum
 .env
 
 bin/
-getter/ffmpeg/
+ffmpeg/
 imgs/
